@@ -13,6 +13,10 @@ database_id = "YOUR_DATABASE_ID" # Replace with your actual database ID after cr
 [[send_email]]
 name = "SEND_EMAIL"
 
+# Cron trigger for email cleanup
+[triggers]
+crons = ["0 2 * * *"] # <-- Set your cron expression here
+
 # Environment variables
 [vars]
 ENVIRONMENT = "development"

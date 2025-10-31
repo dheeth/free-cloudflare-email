@@ -56,4 +56,15 @@ async function email(message: any, env: Env, ctx: ExecutionContext): Promise<voi
 export default {
   fetch: app.fetch,
   email,
+  // Cloudflare Cron Trigger handler
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Import cleanupExpiredEmails dynamically to avoid circular deps
+    const mod = await import('./emailHandler.js');
+    const deleted = await mod.cleanupExpiredEmails(env);
+    if (deleted > 0) {
+      console.log(`[CRON] Deleted ${deleted} expired emails.`);
+    } else {
+      console.log('[CRON] No expired emails to delete.');
+    }
+  },
 };
