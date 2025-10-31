@@ -17,34 +17,34 @@ A complete email management system built entirely on Cloudflare's free tier. Cre
 
 ### 1. Install & Configure
 
-\`\`\`bash
+```bash
 npm install
 npm install -g wrangler
 wrangler login
-\`\`\`
+```
 
 ### 2. Create Database
 
-\`\`\`bash
+```bash
 wrangler d1 create email-system-db
-\`\`\`
+```
 
 Update `wrangler.toml` with the database_id and change admin token:
 
-\`\`\`toml
+```toml
 [[d1_databases]]
 database_id = "YOUR_DATABASE_ID_HERE"
 
 [vars]
 ADMIN_TOKEN = "your-secure-token"
-\`\`\`
+```
 
 ### 3. Deploy
 
-\`\`\`bash
+```bash
 wrangler d1 execute email-system-db --remote --file=./migrations/0001_initial_schema.sql
 wrangler deploy
-\`\`\`
+```
 
 ### 4. Configure Email Routing
 
