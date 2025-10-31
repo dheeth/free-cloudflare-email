@@ -32,9 +32,13 @@ app.post('/webhook/email', async (c) => {
 
 // API routes
 app.route('/api/user', userRoutes);
+app.route('/api/user/', userRoutes);
 app.route('/api/addresses', emailAddressRoutes);
+app.route('/api/addresses/', emailAddressRoutes);
 app.route('/api/emails', emailRoutes);
+app.route('/api/emails/', emailRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/admin/', adminRoutes);
 
 // UI routes
 app.get('/', serveUI);

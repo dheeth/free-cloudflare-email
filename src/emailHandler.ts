@@ -2,14 +2,34 @@ import PostalMime from 'postal-mime';
 import { Env } from './types';
 import { generateUUID, getCurrentTimestamp, calculateExpirationTimestamp } from './utils';
 
+async function streamToBuffer(stream: ReadableStream): Promise<Uint8Array> {
+  const reader = stream.getReader();
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  let length = 0;
+  for (const chunk of chunks) length += chunk.length;
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
 export async function handleIncomingEmail(context: any): Promise<void> {
   const { env, message } = context;
   const db = env.DB as D1Database;
 
   try {
-    // Parse the email
+    // Read the raw email stream into a buffer
+    const rawBuffer = await streamToBuffer(message.raw);
     const parser = new PostalMime();
-    const email = await parser.parse(message.raw);
+    const email = await parser.parse(rawBuffer);
 
     const toAddress = message.to.toLowerCase();
     const fromAddress = message.from.toLowerCase();
@@ -52,7 +72,7 @@ export async function handleIncomingEmail(context: any): Promise<void> {
         email.text || '',
         email.html || '',
         JSON.stringify(email.headers),
-        message.raw,
+        rawBuffer,
         getCurrentTimestamp(),
         expiresAt
       )
