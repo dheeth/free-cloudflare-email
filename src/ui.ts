@@ -694,9 +694,10 @@ function getDashboardPage() {
         <div id="inbox-panel" class="tab-panel">
             <div class="card">
                 <h2>Select Email Address</h2>
-                <select id="inbox-address-select" onchange="loadEmails()" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                <select id="inbox-address-select" onchange="onInboxAddressChange()" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;">
                     <option value="">Select an address...</option>
                 </select>
+                <button class="btn-secondary" id="refresh-inbox-btn" style="margin-left:10px;" onclick="manualInboxRefresh()">Refresh</button>
             </div>
 
             <div class="card">
@@ -774,20 +775,52 @@ function getDashboardPage() {
             setTimeout(() => container.innerHTML = '', 5000);
         }
 
-        function switchTab(tab) {
+        function switchTab(tab, fromRestore) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            
-            event.target.classList.add('active');
+            // Find the tab button by tab name
+            const tabBtn = Array.from(document.querySelectorAll('.tab')).find(btn => btn.textContent.replace(/\s/g, '').toLowerCase().includes(tab));
+            if (tabBtn) tabBtn.classList.add('active');
             document.getElementById(tab + '-panel').classList.add('active');
-            
+            localStorage.setItem('dashboard_tab', tab);
             if (tab === 'addresses') loadAddresses();
             if (tab === 'inbox') {
-                loadAddresses().then(populateAddressSelects);
+                loadAddresses().then(() => {
+                    populateAddressSelects();
+                    if (!fromRestore) {
+                        // If not restoring, clear selected address
+                        document.getElementById('inbox-address-select').value = localStorage.getItem('selected_inbox_address') || '';
+                        loadEmails();
+                    }
+                });
             }
             if (tab === 'send') {
                 loadAddresses().then(populateAddressSelects);
             }
+        }
+
+        // On address select change in inbox
+        function onInboxAddressChange() {
+            const val = document.getElementById('inbox-address-select').value;
+            localStorage.setItem('selected_inbox_address', val);
+            loadEmails();
+        }
+
+        // Manual refresh button for inbox
+        function manualInboxRefresh() {
+            loadEmails();
+        }
+
+        // Auto-refresh for inbox
+        let inboxRefreshInterval = null;
+        function setupInboxAutoRefresh() {
+            if (inboxRefreshInterval) clearInterval(inboxRefreshInterval);
+            inboxRefreshInterval = setInterval(() => {
+                const inboxTabActive = document.getElementById('inbox-panel').classList.contains('active');
+                if (inboxTabActive && document.getElementById('inbox-address-select').value) {
+                    loadEmails();
+                }
+            }, 5000); // 5 seconds
         }
 
         async function loadAddresses() {
@@ -861,7 +894,7 @@ function getDashboardPage() {
                 document.getElementById('messages-list').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📬</div><p>Select an address to view emails</p></div>';
                 return;
             }
-
+            localStorage.setItem('selected_inbox_address', addressId);
             const response = await apiCall('/emails/address/' + addressId);
             if (response.ok) {
                 const data = await response.json();
@@ -967,8 +1000,37 @@ function getDashboardPage() {
             window.location.href = '/login';
         }
 
-        // Initialize
-        loadAddresses();
+        // Restore state on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Restore tab
+            const savedTab = localStorage.getItem('dashboard_tab') || 'addresses';
+            switchTab(savedTab, true);
+            // Restore selected address in inbox
+            if (savedTab === 'inbox') {
+                loadAddresses().then(() => {
+                    populateAddressSelects();
+                    const savedAddr = localStorage.getItem('selected_inbox_address');
+                    if (savedAddr) {
+                        document.getElementById('inbox-address-select').value = savedAddr;
+                        loadEmails();
+                    }
+                });
+            } else {
+                loadAddresses();
+            }
+            setupInboxAutoRefresh();
+        });
+
+        // Also re-setup auto-refresh on tab switch
+        document.querySelectorAll('.tab').forEach(tabBtn => {
+            tabBtn.addEventListener('click', function(e) {
+                const tab = this.textContent.replace(/\s/g, '').toLowerCase().includes('inbox') ? 'inbox' :
+                            this.textContent.replace(/\s/g, '').toLowerCase().includes('addresses') ? 'addresses' :
+                            this.textContent.replace(/\s/g, '').toLowerCase().includes('send') ? 'send' : 'addresses';
+                switchTab(tab);
+                setupInboxAutoRefresh();
+            });
+        });
     </script>
 </body>
 </html>`;
