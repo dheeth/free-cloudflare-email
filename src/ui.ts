@@ -208,12 +208,12 @@ function getLoginPage() {
             <form onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="login-token">Access Token</label>
-                    <input type="text" id="login-token" placeholder="Enter your access token" required>
+                    <input type="password" id="login-token" placeholder="Enter your access token" required autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn">Login</button>
             </form>
             <div class="info-box">
-                💡 Use your access token to login. Admin token: admin-secret-token-change-this
+                💡 Use your access token to login.
             </div>
         </div>
 
