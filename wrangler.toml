@@ -1,0 +1,19 @@
+name = "free-cloudflare-email"
+main = "src/index.ts"
+compatibility_date = "2024-10-31"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "email-system-db"
+database_id = "YOUR_DATABASE_ID" # Replace with your actual database ID after creating
+
+# Email routing bindings
+[[send_email]]
+name = "SEND_EMAIL"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+ADMIN_TOKEN = "admin-secret-token-change-this" # Change this to a secure token

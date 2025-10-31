@@ -1,0 +1,32 @@
+{
+  "name": "free-cloudflare-email",
+  "version": "1.0.0",
+  "description": "Free email management system using Cloudflare services",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create email-system-db",
+    "db:migrations:create": "wrangler d1 migrations create email-system-db",
+    "db:migrations:apply": "wrangler d1 migrations apply email-system-db",
+    "db:migrations:apply:remote": "wrangler d1 migrations apply email-system-db --remote",
+    "cf-typegen": "wrangler types"
+  },
+  "keywords": [
+    "cloudflare",
+    "email",
+    "workers",
+    "d1"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.80.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.3",
+    "postal-mime": "^2.3.2"
+  }
+}
