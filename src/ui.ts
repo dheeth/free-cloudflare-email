@@ -21,7 +21,7 @@ function getLoginPage() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free Cloudflare Email - Login</title>
+    <title>Webmail - Login</title>
     <style>
         * {
             margin: 0;
@@ -249,8 +249,8 @@ function getLoginPage() {
 </head>
 <body>
     <div class="container">
-        <h1>📧 Email System</h1>
-        <p class="subtitle">Free Cloudflare Email Management</p>
+        <h1>📧 Webmail</h1>
+        <p class="subtitle">Login to Webmail</p>
 
         <div class="tab-container">
             <div class="tab active" onclick="switchTab('login')">Login</div>
@@ -382,7 +382,7 @@ function getDashboardPage() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Email System</title>
+    <title>Dashboard - Webmail</title>
     <style>
         * {
             margin: 0;
@@ -1194,7 +1194,7 @@ function getAdminPage() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Email System</title>
+    <title>Admin Panel - Webmail</title>
     <style>
         * {
             margin: 0;
