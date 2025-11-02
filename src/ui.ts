@@ -746,11 +746,18 @@ function getDashboardPage() {
         @media (max-width: 768px) {
             .header-content {
                 padding: 0 12px;
-                flex-direction: column;
-                gap: 12px;
+                flex-direction: row;
+                gap: 8px;
+                align-items: center;
             }
             .header h1 {
                 font-size: 1.4rem;
+                margin: 0;
+            }
+            .logout-btn {
+                align-self: center;
+                width: auto;
+                margin: 0;
             }
             .container {
                 padding: 20px 12px;
@@ -761,6 +768,18 @@ function getDashboardPage() {
             .tab {
                 padding: 10px 16px;
                 font-size: 0.9rem;
+            }
+            .inbox-controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .inbox-controls select {
+                width: 100%;
+                flex: none;
+            }
+            .inbox-controls button {
+                width: 100%;
+                flex: none;
             }
         }
         @media (max-width: 480px) {
@@ -809,16 +828,16 @@ function getDashboardPage() {
 <body>
     <div class="header">
         <div class="header-content">
-            <h1>📧 Email Dashboard</h1>
+            <h1 onclick="window.location.href='/dashboard'" style="cursor:pointer;">📧 Email Dashboard</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </div>
 
     <div class="container">
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('addresses')">My Addresses</button>
-            <button class="tab" onclick="switchTab('inbox')">Inbox</button>
-            <button class="tab" onclick="switchTab('send')">Send Email</button>
+            <button class="tab" data-tab="addresses" onclick="switchTab(this.dataset.tab)">My Addresses</button>
+            <button class="tab" data-tab="inbox" onclick="switchTab(this.dataset.tab)">Inbox</button>
+            <button class="tab" data-tab="send" onclick="switchTab(this.dataset.tab)">Send Email</button>
         </div>
 
         <div id="alert-container"></div>
@@ -843,10 +862,12 @@ function getDashboardPage() {
         <div id="inbox-panel" class="tab-panel">
             <div class="card">
                 <h2>Select Email Address</h2>
-                <select id="inbox-address-select" onchange="onInboxAddressChange()" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;">
-                    <option value="">Select an address...</option>
-                </select>
-                <button class="btn-secondary" id="refresh-inbox-btn" style="margin-left:10px;" onclick="manualInboxRefresh()">Refresh</button>
+                <div class="inbox-controls" style="display: flex; gap: 12px; align-items: center;">
+                    <select id="inbox-address-select" onchange="onInboxAddressChange()" style="flex: 1 1 0; min-width: 0;">
+                        <option value="">Select an address...</option>
+                    </select>
+                    <button class="btn-secondary" id="refresh-inbox-btn" onclick="manualInboxRefresh()" style="flex: 0 0 auto;">Refresh</button>
+                </div>
             </div>
 
             <div class="card">
@@ -864,7 +885,7 @@ function getDashboardPage() {
                 </div>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">From Address:</label>
-                    <select id="send-from-select" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <select id="send-from-select" style="width: 100%;">
                         <option value="">Select your address...</option>
                     </select>
                     <button class="btn-secondary" onclick="requestSendPermission()" style="margin-top: 10px;">Request Send Permission</button>
@@ -927,8 +948,8 @@ function getDashboardPage() {
         function switchTab(tab, fromRestore) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            // Find the tab button by tab name
-            const tabBtn = Array.from(document.querySelectorAll('.tab')).find(btn => btn.textContent.replace(/\s/g, '').toLowerCase().includes(tab));
+            // Find the tab button by data-tab
+            const tabBtn = document.querySelector('.tab[data-tab="' + tab + '"]');
             if (tabBtn) tabBtn.classList.add('active');
             document.getElementById(tab + '-panel').classList.add('active');
             localStorage.setItem('dashboard_tab', tab);
@@ -946,6 +967,7 @@ function getDashboardPage() {
             if (tab === 'send') {
                 loadAddresses().then(populateAddressSelects);
             }
+            setupInboxAutoRefresh();
         }
 
         // On address select change in inbox
@@ -1171,17 +1193,6 @@ function getDashboardPage() {
                 loadAddresses();
             }
             setupInboxAutoRefresh();
-        });
-
-        // Also re-setup auto-refresh on tab switch
-        document.querySelectorAll('.tab').forEach(tabBtn => {
-            tabBtn.addEventListener('click', function(e) {
-                const tab = this.textContent.replace(/\s/g, '').toLowerCase().includes('inbox') ? 'inbox' :
-                            this.textContent.replace(/\s/g, '').toLowerCase().includes('addresses') ? 'addresses' :
-                            this.textContent.replace(/\s/g, '').toLowerCase().includes('send') ? 'send' : 'addresses';
-                switchTab(tab);
-                setupInboxAutoRefresh();
-            });
         });
     </script>
 </body>
@@ -1412,7 +1423,7 @@ function getAdminPage() {
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
-        input[type="text"], input[type="number"] {
+        input[type="text"], input[type="number"], select {
             flex: 1 1 200px;
             padding: 13px 16px;
             border: 2px solid #e0e0e0;
@@ -1422,7 +1433,7 @@ function getAdminPage() {
             transition: all 0.2s;
             font-family: inherit;
         }
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #f5576c;
             background: white;
