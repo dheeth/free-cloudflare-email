@@ -510,20 +510,24 @@ function getDashboardPage() {
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
         }
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-            border: 2px solid #e0e0e0;
-            padding: 10px 20px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 0.95rem;
             margin-left: 8px;
-            font-weight: 500;
+            font-weight: 600;
             transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.25);
         }
         .btn-secondary:hover {
-            background: #e8e8e8;
-            border-color: #d0d0d0;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+        }
+        .btn-secondary:active {
+            transform: translateY(-1px);
         }
         .btn-danger {
             background: #ff6b6b;
@@ -556,11 +560,21 @@ function getDashboardPage() {
             transition: all 0.2s;
             font-family: inherit;
         }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23667eea' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
-            background: white;
+            background-color: white;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
+        }
+        select:focus {
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23667eea' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
         }
         textarea {
             min-height: 100px;
@@ -800,11 +814,11 @@ function getDashboardPage() {
             .btn-primary, .btn-secondary, .btn-danger {
                 font-size: 0.9rem;
                 padding: 10px 16px;
+                width: 100%;
             }
             .btn-secondary {
                 margin-left: 0;
                 margin-top: 8px;
-                width: 100%;
             }
             .input-group {
                 flex-direction: column;
@@ -880,15 +894,15 @@ function getDashboardPage() {
         <div id="send-panel" class="tab-panel">
             <div class="card">
                 <h2>Send Email</h2>
-                <div class="alert alert-info">
+                <div id="permission-alert" class="alert alert-info">
                     📮 You need admin approval to send emails. Request permission first, then you can send emails once approved.
                 </div>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">From Address:</label>
-                    <select id="send-from-select" style="width: 100%;">
+                    <select id="send-from-select" style="width: 100%;" onchange="onSendAddressChange()">
                         <option value="">Select your address...</option>
                     </select>
-                    <button class="btn-secondary" onclick="requestSendPermission()" style="margin-top: 10px;">Request Send Permission</button>
+                    <button id="request-send-btn" class="btn-secondary" onclick="requestSendPermission()" style="margin-top: 10px;">Request Send Permission</button>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">To:</label>
@@ -912,7 +926,10 @@ function getDashboardPage() {
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-subject"></h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="toggle-read-btn" class="close-btn" style="background: none; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;" onclick="toggleEmailReadStatus()">Mark as Unread</button>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
             </div>
             <div id="modal-body"></div>
         </div>
@@ -922,6 +939,8 @@ function getDashboardPage() {
         const API_BASE = '/api';
         let token = localStorage.getItem('token');
         let addresses = [];
+        let currentEmailId = null;
+        let currentEmailIsRead = false;
 
         if (!token) {
             window.location.href = '/login';
@@ -1081,10 +1100,15 @@ function getDashboardPage() {
             }
 
             list.innerHTML = emails.map(email => \`
-                <li class="message-item" onclick="viewEmail('\${email.id}')">
-                    <div class="message-subject">\${email.subject || '(No subject)'}</div>
-                    <div class="message-from">From: \${email.from_address}</div>
-                    <div class="message-date">\${new Date(email.received_at * 1000).toLocaleString()}</div>
+                <li class="message-item \${email.is_read ? 'read' : 'unread'}" onclick="viewEmail('\${email.id}')">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: \${email.is_read ? '#ccc' : '#667eea'}; flex-shrink: 0;"></div>
+                        <div style="flex: 1;">
+                            <div class="message-subject" style="font-weight: \${email.is_read ? '400' : '700'}; color: \${email.is_read ? '#999' : '#1a1a1a'};}">\${email.subject || '(No subject)'}</div>
+                            <div class="message-from">From: \${email.from_address}</div>
+                            <div class="message-date">\${new Date(email.received_at * 1000).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </li>
             \`).join('');
         }
@@ -1100,15 +1124,58 @@ function getDashboardPage() {
                 const data = await response.json();
                 const email = data.email;
                 
+                // Track current email for toggle button
+                currentEmailId = emailId;
+                currentEmailIsRead = email.is_read;
+                updateToggleButton();
+                
                 document.getElementById('modal-subject').textContent = email.subject || '(No subject)';
+                const bodyContent = (email.body_html || email.body_text || '(No content)').trim();
                 document.getElementById('modal-body').innerHTML = \`
                     <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #eee;">
                         <div style="margin-bottom: 10px;"><strong>From:</strong> \${email.from}</div>
                         <div style="margin-bottom: 10px;"><strong>To:</strong> \${email.to}</div>
                         <div><strong>Date:</strong> \${new Date(email.received_at * 1000).toLocaleString()}</div>
                     </div>
-                    <div style="white-space: pre-wrap;">\${email.body_html || email.body_text || '(No content)'}</div>
+                    <div style="white-space: pre-wrap; word-wrap: break-word;">\${bodyContent}</div>
                 \`;
+                
+                // Mark email as read if not already read
+                if (!email.is_read) {
+                    await apiCall('/emails/' + emailId + '/mark-read', { method: 'POST' });
+                    currentEmailIsRead = true;
+                    updateToggleButton();
+                    // Refresh the email list to update the read status indicator
+                    loadEmails();
+                }
+            }
+        }
+        
+        function updateToggleButton() {
+            const btn = document.getElementById('toggle-read-btn');
+            if (currentEmailIsRead) {
+                btn.textContent = 'Mark as Unread';
+                btn.style.background = '#f0f0f0';
+                btn.style.color = '#666';
+            } else {
+                btn.textContent = 'Mark as Read';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                btn.style.color = 'white';
+            }
+        }
+        
+        async function toggleEmailReadStatus() {
+            if (!currentEmailId) return;
+            
+            const endpoint = currentEmailIsRead 
+                ? '/emails/' + currentEmailId + '/mark-unread'
+                : '/emails/' + currentEmailId + '/mark-read';
+            
+            const response = await apiCall(endpoint, { method: 'POST' });
+            if (response.ok) {
+                currentEmailIsRead = !currentEmailIsRead;
+                updateToggleButton();
+                loadEmails();
             }
         }
 
@@ -1129,9 +1196,50 @@ function getDashboardPage() {
 
             if (response.ok) {
                 showAlert('✅ Send permission requested. Wait for admin approval.', 'success');
+                checkSendPermission();
             } else {
                 const error = await response.json();
                 showAlert('❌ ' + (error.error || error.message), 'error');
+            }
+        }
+
+        async function onSendAddressChange() {
+            checkSendPermission();
+        }
+
+        async function checkSendPermission() {
+            const addressId = document.getElementById('send-from-select').value;
+            const permAlert = document.getElementById('permission-alert');
+            const requestBtn = document.getElementById('request-send-btn');
+            
+            if (!addressId) {
+                permAlert.style.display = 'block';
+                requestBtn.style.display = 'inline-block';
+                return;
+            }
+
+            try {
+                // Fetch the permission status
+                const response = await apiCall(\`/emails/address/\${addressId}\`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Check if permission is approved
+                    if (data.send_permission_status === 'approved') {
+                        permAlert.style.display = 'none';
+                        requestBtn.style.display = 'none';
+                    } else {
+                        permAlert.style.display = 'block';
+                        requestBtn.style.display = 'inline-block';
+                    }
+                } else {
+                    permAlert.style.display = 'block';
+                    requestBtn.style.display = 'inline-block';
+                }
+            } catch (error) {
+                // Keep showing the alert and button on error
+                permAlert.style.display = 'block';
+                requestBtn.style.display = 'inline-block';
             }
         }
 

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "setup": "node scripts/setup.js",
+    "migrate": "node scripts/run-migrations.js",
+    "migrate:remote": "node scripts/run-migrations.js --remote",
     "db:create": "wrangler d1 create email-system-db",
     "db:migrations:create": "wrangler d1 migrations create email-system-db",
     "db:migrations:apply": "wrangler d1 migrations apply email-system-db",

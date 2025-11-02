@@ -56,6 +56,7 @@ export function formatEmailForResponse(email: any) {
     body_html: email.body_html,
     received_at: email.received_at,
     expires_at: email.expires_at,
+    is_read: email.is_read || 0,
   };
 }
 

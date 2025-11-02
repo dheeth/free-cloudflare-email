@@ -22,11 +22,19 @@ emailRoutes.get('/address/:addressId', requireAuth, async (c) => {
 
     // Get emails
     const emails = await c.env.DB.prepare(
-      `SELECT id, from_address, to_address, subject, received_at, expires_at 
+      `SELECT id, from_address, to_address, subject, received_at, expires_at, is_read
        FROM emails WHERE address_id = ? ORDER BY received_at DESC LIMIT 100`
     ).bind(addressId).all();
 
-    return c.json({ emails: emails.results });
+    // Get send permission status
+    const permission = await c.env.DB.prepare(
+      'SELECT status FROM send_permissions WHERE address_id = ?'
+    ).bind(addressId).first();
+
+    return c.json({ 
+      emails: emails.results,
+      send_permission_status: permission ? (permission as any).status : null
+    });
   } catch (error) {
     return c.json({ error: 'Failed to fetch emails' }, 500);
   }
@@ -170,5 +178,62 @@ emailRoutes.post('/send', requireAuth, async (c) => {
     }
   } catch (error) {
     return c.json({ error: 'Failed to process send request' }, 500);
+  }
+});
+
+// Mark an email as read
+emailRoutes.post('/:emailId/mark-read', requireAuth, async (c) => {
+  const user = c.get('user');
+  const emailId = c.req.param('emailId');
+
+  try {
+    // Verify ownership
+    const email = await c.env.DB.prepare(
+      `SELECT e.id FROM emails e
+       INNER JOIN email_addresses ea ON e.address_id = ea.id
+       WHERE e.id = ? AND ea.user_id = ?`
+    ).bind(emailId, user.id).first();
+
+    if (!email) {
+      return c.json({ error: 'Email not found' }, 404);
+    }
+
+    // Mark as read
+    const now = getCurrentTimestamp();
+    await c.env.DB.prepare(
+      'UPDATE emails SET is_read = 1, read_at = ? WHERE id = ?'
+    ).bind(now, emailId).run();
+
+    return c.json({ success: true, message: 'Email marked as read' });
+  } catch (error) {
+    return c.json({ error: 'Failed to mark email as read' }, 500);
+  }
+});
+
+// Mark an email as unread
+emailRoutes.post('/:emailId/mark-unread', requireAuth, async (c) => {
+  const user = c.get('user');
+  const emailId = c.req.param('emailId');
+
+  try {
+    // Verify ownership
+    const email = await c.env.DB.prepare(
+      `SELECT e.id FROM emails e
+       INNER JOIN email_addresses ea ON e.address_id = ea.id
+       WHERE e.id = ? AND ea.user_id = ?`
+    ).bind(emailId, user.id).first();
+
+    if (!email) {
+      return c.json({ error: 'Email not found' }, 404);
+    }
+
+    // Mark as unread
+    await c.env.DB.prepare(
+      'UPDATE emails SET is_read = 0, read_at = NULL WHERE id = ?'
+    ).bind(emailId).run();
+
+    return c.json({ success: true, message: 'Email marked as unread' });
+  } catch (error) {
+    return c.json({ error: 'Failed to mark email as unread' }, 500);
   }
 });

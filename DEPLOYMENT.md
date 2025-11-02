@@ -7,8 +7,27 @@
 - [ ] Domain added to Cloudflare
 - [ ] Node.js installed (v18+)
 - [ ] Wrangler CLI installed globally
+- [ ] `npm install` completed
 
-### 2. Initial Setup (5 minutes)
+### 2. Automated Setup (Recommended)
+
+The easiest way to set up everything in one go:
+
+```bash
+npm run setup
+```
+
+This interactive script will:
+1. Authenticate with Cloudflare
+2. Create the D1 database
+3. Run all migrations automatically
+4. Configure admin token
+5. Deploy to Workers
+6. Guide you through email routing setup
+
+### 3. Manual Setup (Alternative)
+
+If you prefer to do things step by step:
 
 \`\`\`bash
 # Install dependencies
@@ -42,8 +61,26 @@ ADMIN_TOKEN = "your-super-secure-token-123456"
 ### 4. Database Setup (2 minutes)
 
 \`\`\`bash
-# Initialize database schema
-wrangler d1 execute email-system-db --remote --file=./migrations/0001_initial_schema.sql
+# Run all pending migrations automatically
+npm run migrate              # for development database
+npm run migrate:remote       # for production database
+\`\`\`
+
+The migration runner will:
+- ✅ Detect which migrations have already been applied
+- ✅ Run only pending migrations in order
+- ✅ Track applied migrations in the database
+- ✅ Show progress and any errors
+
+The first run will initialize the database schema (migration 0001) and any pending migrations (0002, etc).
+
+### 4.1 Manual Migration (Alternative)
+
+If you prefer manual control:
+
+\`\`\`bash
+# Run specific migration
+wrangler d1 execute email-system-db --remote --file=./migrations/0002_add_email_read_status.sql
 \`\`\`
 
 ### 5. Deploy (1 minute)
@@ -228,13 +265,70 @@ wrangler login
 3. Check worker is deployed successfully
 4. Review worker logs: \`wrangler tail\`
 
+### Migration-related issues
+
+**Check migration status:**
+\`\`\`bash
+# See which migrations have been applied
+npm run migrate
+
+# For production
+npm run migrate:remote
+\`\`\`
+
+**If migrations fail:**
+\`\`\`bash
+# Check if migrations table exists
+wrangler d1 execute email-system-db --remote --command="SELECT * FROM migrations"
+
+# If table doesn't exist, run initial migration first
+npm run migrate:remote
+
+# See which migrations were applied
+wrangler d1 execute email-system-db --remote --command="SELECT name, applied_at FROM migrations ORDER BY applied_at"
+\`\`\`
+
+**If a specific migration fails:**
+1. Check the error message
+2. Ensure database_id is correct in wrangler.toml
+3. Verify you have permissions to modify the database
+4. Check if columns already exist (idempotent migrations use IF NOT EXISTS)
+
 ### Migration errors
 \`\`\`bash
 # Check if migrations already applied
 wrangler d1 execute email-system-db --remote --command="SELECT name FROM sqlite_master WHERE type='table'"
 
 # If tables exist, migrations already applied
+
+# Check if migration 0002 was applied
+wrangler d1 execute email-system-db --remote --command="PRAGMA table_info(emails)"
+
+# If you see is_read and read_at columns, migration 0002 is already applied
 \`\`\`
+
+### Applying New Migrations
+
+To apply a new migration to your production database:
+
+\`\`\`bash
+# Step 1: Pull latest code
+git pull
+
+# Step 2: Verify the migration file exists
+ls migrations/
+
+# Step 3: Apply the migration to production
+wrangler d1 execute email-system-db --remote --file=./migrations/0002_add_email_read_status.sql
+
+# Step 4: Verify the migration succeeded
+wrangler d1 execute email-system-db --remote --command="PRAGMA table_info(emails)"
+
+# Step 5: Deploy the worker code
+wrangler deploy
+\`\`\`
+
+**Note:** Migration 0002 automatically marks all existing emails as read. This ensures a smooth transition with no unread notifications.
 
 ## Support
 

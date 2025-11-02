@@ -1,4 +1,11 @@
 -- Migration 0001 - Initial schema
+-- Create migrations table to track applied migrations
+CREATE TABLE IF NOT EXISTS migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    applied_at INTEGER NOT NULL
+);
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -72,3 +79,7 @@ INSERT INTO settings (key, value, updated_at) VALUES
 -- Create default admin user (token: admin-secret-token-change-this)
 INSERT INTO users (id, token, is_admin, is_banned, created_at, updated_at) VALUES 
     ('admin', 'admin-secret-token-change-this', 1, 0, strftime('%s', 'now'), strftime('%s', 'now'));
+
+-- Mark this migration as applied
+INSERT OR IGNORE INTO migrations (name, applied_at) VALUES 
+    ('0001_initial_schema.sql', strftime('%s', 'now'));

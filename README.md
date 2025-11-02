@@ -23,40 +23,35 @@ npm install -g wrangler
 wrangler login
 ```
 
-### 2. Create Database
+### 2. Automated Setup (Recommended)
 
 ```bash
+npm run setup
+```
+
+This will guide you through:
+- Creating the D1 database
+- Running all migrations
+- Configuring admin token
+- Deploying to Workers
+- Setting up email routing
+
+### 3. Manual Setup (Alternative)
+
+If you prefer manual setup:
+
+```bash
+# Create database
 wrangler d1 create email-system-db
-```
 
-Update `wrangler.toml` with the database_id and change admin token:
+# Update wrangler.toml with the database_id from above
 
-```toml
-[[d1_databases]]
-database_id = "YOUR_DATABASE_ID_HERE"
+# Run all migrations automatically
+npm run migrate
 
-[vars]
-ADMIN_TOKEN = "your-secure-token"
-```
-
-### 3. Deploy
-
-```bash
-wrangler d1 execute email-system-db --remote --file=./migrations/0001_initial_schema.sql
+# Deploy
 wrangler deploy
 ```
-
-### 4. Configure Email Routing
-
-1. [Cloudflare Dashboard](https://dash.cloudflare.com) → Your Domain → **Email** → **Email Routing**
-2. **Enable** and configure MX records
-3. **Catch-all** → **Send to Worker** → Select your worker
-
-### 5. Initial Setup
-
-1. Visit your worker URL
-2. Login with admin token
-3. Update domain in Settings
 
 ## Usage
 
