@@ -5,7 +5,47 @@ import { requireAuth } from '../middleware';
 
 export const emailRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// Get all emails for a specific email address
+// Get all emails for the current user (across all addresses)
+emailRoutes.get('/', requireAuth, async (c) => {
+  const user = c.get('user');
+  const addressId = c.req.query('address_id');
+
+  try {
+    let query;
+    let params;
+
+    if (addressId) {
+      // Verify ownership of the specific address
+      const address = await c.env.DB.prepare(
+        'SELECT id FROM email_addresses WHERE id = ? AND user_id = ?'
+      ).bind(addressId, user.id).first();
+
+      if (!address) {
+        return c.json({ error: 'Email address not found or unauthorized' }, 404);
+      }
+
+      query = `SELECT e.id, e.from_address, e.to_address, e.subject, e.received_at, e.expires_at, e.is_read
+               FROM emails e
+               WHERE e.address_id = ? ORDER BY e.received_at DESC LIMIT 100`;
+      params = [addressId];
+    } else {
+      // Get all emails for all user's addresses
+      query = `SELECT e.id, e.from_address, e.to_address, e.subject, e.received_at, e.expires_at, e.is_read
+               FROM emails e
+               INNER JOIN email_addresses ea ON e.address_id = ea.id
+               WHERE ea.user_id = ? ORDER BY e.received_at DESC LIMIT 100`;
+      params = [user.id];
+    }
+
+    const emails = await c.env.DB.prepare(query).bind(...params).all();
+
+    return c.json({ emails: emails.results });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch emails' }, 500);
+  }
+});
+
+// Get all emails for a specific email address (Legacy/Specific route)
 emailRoutes.get('/address/:addressId', requireAuth, async (c) => {
   const user = c.get('user');
   const addressId = c.req.param('addressId');
@@ -31,7 +71,7 @@ emailRoutes.get('/address/:addressId', requireAuth, async (c) => {
       'SELECT status FROM send_permissions WHERE address_id = ?'
     ).bind(addressId).first();
 
-    return c.json({ 
+    return c.json({
       emails: emails.results,
       send_permission_status: permission ? (permission as any).status : null
     });
@@ -109,9 +149,9 @@ emailRoutes.post('/address/:addressId/request-send', requireAuth, async (c) => {
     ).bind(addressId).first();
 
     if (existing) {
-      return c.json({ 
-        message: 'Request already exists', 
-        status: (existing as any).status 
+      return c.json({
+        message: 'Request already exists',
+        status: (existing as any).status
       });
     }
 

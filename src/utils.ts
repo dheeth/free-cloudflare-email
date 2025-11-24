@@ -49,11 +49,11 @@ export function isValidEmailPrefix(prefix: string): boolean {
 export function formatEmailForResponse(email: any) {
   return {
     id: email.id,
-    from: email.from_address,
-    to: email.to_address,
+    from_address: email.from_address,
+    to_address: email.to_address,
     subject: email.subject,
-    body_text: email.body_text,
-    body_html: email.body_html,
+    text_body: email.body_text,
+    html_body: email.body_html,
     received_at: email.received_at,
     expires_at: email.expires_at,
     is_read: email.is_read || 0,

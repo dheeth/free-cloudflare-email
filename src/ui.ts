@@ -266,6 +266,15 @@ function getSharedHead(title: string) {
                 padding-bottom: 80px; /* Space for mobile nav */
             }
         }
+
+        .rotating {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
   `;
 }
@@ -845,7 +854,7 @@ function getDashboardPage() {
                         <select id="address-filter" onchange="loadEmails()">
                             <option value="">All Addresses</option>
                         </select>
-                        <button onclick="loadEmails()" class="btn btn-secondary">
+                        <button id="refresh-btn" onclick="loadEmails()" class="btn btn-secondary">
                             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         </button>
                     </div>
@@ -1042,6 +1051,13 @@ function getDashboardPage() {
 
         async function loadEmails(countOnly = false) {
             const addressId = document.getElementById('address-filter').value;
+            const refreshBtn = document.getElementById('refresh-btn');
+            
+            if (!countOnly && refreshBtn) {
+                refreshBtn.classList.add('rotating');
+                refreshBtn.disabled = true;
+            }
+
             let url = API_BASE + '/emails';
             if (addressId) url += '?address_id=' + addressId;
 
@@ -1061,30 +1077,35 @@ function getDashboardPage() {
 
                 if (data.emails.length === 0) {
                     list.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-muted);">No emails found</div>';
-                    return;
+                } else {
+                    data.emails.forEach(email => {
+                        const div = document.createElement('div');
+                        div.className = 'glass email-item';
+                        div.style.marginBottom = '0.5rem';
+                        div.onclick = () => openEmail(email);
+                        div.innerHTML = \`
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                    <span style="font-weight: 600; color: var(--primary);">\${email.from_address}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">\${new Date(email.received_at * 1000).toLocaleString()}</span>
+                                </div>
+                                <div style="font-weight: 500; margin-bottom: 0.25rem;">\${email.subject || '(No Subject)'}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">To: \${email.to_address}</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;">
+                                    Click to view details
+                                </div>
+                            </div>
+                        \`;
+                        list.appendChild(div);
+                    });
                 }
-
-                data.emails.forEach(email => {
-                    const div = document.createElement('div');
-                    div.className = 'glass email-item';
-                    div.style.marginBottom = '0.5rem';
-                    div.onclick = () => openEmail(email);
-                    div.innerHTML = \`
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                <span style="font-weight: 600; color: var(--primary);">\${email.from_address}</span>
-                                <span style="font-size: 0.8rem; color: var(--text-muted);">\${new Date(email.created_at).toLocaleString()}</span>
-                            </div>
-                            <div style="font-weight: 500; margin-bottom: 0.25rem;">\${email.subject || '(No Subject)'}</div>
-                            <div style="font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;">
-                                Click to view details
-                            </div>
-                        </div>
-                    \`;
-                    list.appendChild(div);
-                });
             } catch (e) {
                 console.error(e);
+            } finally {
+                if (!countOnly && refreshBtn) {
+                    refreshBtn.classList.remove('rotating');
+                    refreshBtn.disabled = false;
+                }
             }
         }
 
@@ -1212,20 +1233,39 @@ function getDashboardPage() {
             }
         }
 
-        function openEmail(email) {
-            document.getElementById('email-subject').textContent = email.subject;
-            document.getElementById('email-from').textContent = email.from_address;
-            document.getElementById('email-to').textContent = 'Me'; // Ideally fetch the specific To address
-            
-            // Simple HTML rendering - in prod use a sanitizer
-            const bodyContainer = document.getElementById('email-body');
-            if (email.html_body) {
-                bodyContainer.innerHTML = email.html_body;
-            } else {
-                bodyContainer.textContent = email.text_body || '(No content)';
-            }
-            
+        async function openEmail(email) {
+            // Show loading state
+            document.getElementById('email-subject').textContent = 'Loading...';
+            document.getElementById('email-from').textContent = '...';
+            document.getElementById('email-to').textContent = '...';
+            document.getElementById('email-body').innerHTML = '<div style="text-align: center; padding: 2rem;">Loading content...</div>';
             openModal('email-modal');
+
+            try {
+                // Fetch full email details
+                const res = await fetch(API_BASE + '/emails/' + email.id, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    const fullEmail = data.email;
+                    document.getElementById('email-subject').textContent = fullEmail.subject || '(No Subject)';
+                    document.getElementById('email-from').textContent = fullEmail.from_address;
+                    document.getElementById('email-to').textContent = fullEmail.to_address;
+                    
+                    const bodyContainer = document.getElementById('email-body');
+                    if (fullEmail.html_body) {
+                        bodyContainer.innerHTML = fullEmail.html_body;
+                    } else {
+                        bodyContainer.textContent = fullEmail.text_body || '(No content)';
+                    }
+                } else {
+                    document.getElementById('email-body').textContent = 'Failed to load email content.';
+                }
+            } catch (e) {
+                document.getElementById('email-body').textContent = 'Error loading email.';
+            }
         }
 
         function openCreateModal() {
