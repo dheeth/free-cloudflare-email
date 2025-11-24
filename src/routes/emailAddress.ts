@@ -72,9 +72,17 @@ emailAddressRoutes.get('/', requireAuth, async (c) => {
   const user = c.get('user');
 
   try {
-    const addresses = await c.env.DB.prepare(
-      'SELECT id, address, created_at FROM email_addresses WHERE user_id = ? ORDER BY created_at DESC'
-    ).bind(user.id).all();
+    const addresses = await c.env.DB.prepare(`
+      SELECT 
+        ea.id, 
+        ea.address, 
+        ea.created_at,
+        sp.status as send_permission_status
+      FROM email_addresses ea
+      LEFT JOIN send_permissions sp ON ea.id = sp.address_id
+      WHERE ea.user_id = ? 
+      ORDER BY ea.created_at DESC
+    `).bind(user.id).all();
 
     return c.json({ addresses: addresses.results });
   } catch (error) {

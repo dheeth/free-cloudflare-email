@@ -1005,9 +1005,18 @@ function getDashboardPage() {
                             <div style="font-size: 0.85rem; color: var(--text-muted);">Created: \${new Date(addr.created_at).toLocaleDateString()}</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 1rem;">
-                            <button onclick="requestPermission('\${addr.id}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
-                                Request Send
-                            </button>
+                            \${!addr.send_permission_status ? \`
+                                <button onclick="requestPermission('\${addr.id}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                                    Request Send
+                                </button>
+                            \` : addr.send_permission_status === 'approved' ? '' : \`
+                                <span class="badge" style="\${
+                                    addr.send_permission_status === 'pending' ? 'background: rgba(234, 179, 8, 0.2); color: #fde047;' : 
+                                    'background: rgba(239, 68, 68, 0.2); color: #fca5a5;'
+                                }">
+                                    \${addr.send_permission_status.charAt(0).toUpperCase() + addr.send_permission_status.slice(1)}
+                                </span>
+                            \`}
                             <span class="badge badge-active">Active</span>
                             <button onclick="deleteAddress('\${addr.id}')" class="btn btn-danger" style="padding: 0.5rem;">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -1142,10 +1151,12 @@ function getDashboardPage() {
                 // For better UX, let's assume we show all but warn.
                 
                 data.addresses.forEach(addr => {
-                    const opt = document.createElement('option');
-                    opt.value = addr.address;
-                    opt.textContent = addr.address;
-                    select.appendChild(opt);
+                    if (addr.send_permission_status === 'approved') {
+                        const opt = document.createElement('option');
+                        opt.value = addr.address;
+                        opt.textContent = addr.address;
+                        select.appendChild(opt);
+                    }
                 });
             } catch (e) {
                 select.innerHTML = '<option value="">Error loading addresses</option>';
