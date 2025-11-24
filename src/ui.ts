@@ -935,7 +935,13 @@ function getDashboardPage() {
                 </div>
                 <button onclick="closeModal('email-modal')" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
             </div>
-            <div id="email-body" style="padding: 2rem; min-height: 200px; background: white; color: #1a1a1a;">
+            <div id="email-body" style="min-height: 200px; background: white; color: #1a1a1a; overflow-x: auto;">
+                <style>
+                    #email-body img { max-width: 100%; height: auto; }
+                    #email-body table { max-width: 100%; }
+                    /* Reset body margin inside the email content if possible, though scoped styles are limited */
+                    #email-body > * { margin: 0; } 
+                </style>
                 <!-- Email content -->
             </div>
         </div>
