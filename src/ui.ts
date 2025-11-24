@@ -285,6 +285,7 @@ function getLoginPage() {
             justify-content: center;
             padding: 1rem;
             position: relative;
+            overflow: hidden;
         }
 
         .login-card {
@@ -388,6 +389,12 @@ function getLoginPage() {
             0% { transform: translate(0, 0); }
             50% { transform: translate(20px, 40px); }
             100% { transform: translate(0, 0); }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 0;
+            }
         }
     </style>
 </head>
