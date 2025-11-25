@@ -954,9 +954,16 @@ function getDashboardPage() {
         if (!token) window.location.href = '/login';
 
         // Initial Load
-        loadDashboard();
+        loadDashboard().then(() => {
+            const savedSection = localStorage.getItem('currentSection');
+            if (savedSection) {
+                showSection(savedSection);
+            }
+        });
 
         function showSection(section) {
+            localStorage.setItem('currentSection', section);
+            
             // Update Nav
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
@@ -1047,19 +1054,42 @@ function getDashboardPage() {
                     filter.appendChild(opt);
                 });
 
-                // Load Email Count
+                // Restore saved filter
+                const savedFilter = localStorage.getItem('selectedAddressId');
+                if (savedFilter && filter.querySelector(\`option[value="\${savedFilter}"]\`)) {
+                    filter.value = savedFilter;
+                }
+
                 loadEmails(true);
+                startAutoRefresh();
 
             } catch (e) {
                 console.error(e);
             }
         }
 
-        async function loadEmails(countOnly = false) {
+        let autoRefreshInterval;
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                const emailsSection = document.getElementById('section-emails');
+                if (emailsSection && emailsSection.style.display !== 'none') {
+                    loadEmails(false, true); // Refresh list
+                } else {
+                    loadEmails(true); // Refresh count only
+                }
+            }, 10000);
+        }
+
+        async function loadEmails(countOnly = false, isAutoRefresh = false) {
             const addressId = document.getElementById('address-filter').value;
             const refreshBtn = document.getElementById('refresh-btn');
             
-            if (!countOnly && refreshBtn) {
+            if (!countOnly) {
+                localStorage.setItem('selectedAddressId', addressId);
+            }
+            
+            if (!countOnly && refreshBtn && !isAutoRefresh) {
                 refreshBtn.classList.add('rotating');
                 refreshBtn.disabled = true;
             }
@@ -1287,6 +1317,7 @@ function getDashboardPage() {
         }
 
         function logout() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
             localStorage.removeItem('token');
             window.location.href = '/login';
         }
