@@ -1111,7 +1111,7 @@ function getDashboardPage() {
 
             let url = API_BASE + '/emails';
             const params = new URLSearchParams();
-            if (addressId) params.append('address_id', addressId);
+            if (addressId && !countOnly) params.append('address_id', addressId);
             if (countOnly) params.append('count_only', 'true');
             
             if (params.toString()) url += '?' + params.toString();
