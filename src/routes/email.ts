@@ -9,10 +9,34 @@ export const emailRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 emailRoutes.get('/', requireAuth, async (c) => {
   const user = c.get('user');
   const addressId = c.req.query('address_id');
+  const countOnly = c.req.query('count_only') === 'true';
 
   try {
     let query;
     let params;
+
+    if (countOnly) {
+      if (addressId) {
+        // Verify ownership
+        const address = await c.env.DB.prepare(
+          'SELECT id FROM email_addresses WHERE id = ? AND user_id = ?'
+        ).bind(addressId, user.id).first();
+
+        if (!address) return c.json({ count: 0 });
+
+        query = 'SELECT COUNT(*) as count FROM emails WHERE address_id = ?';
+        params = [addressId];
+      } else {
+        query = `SELECT COUNT(*) as count
+                 FROM emails e
+                 INNER JOIN email_addresses ea ON e.address_id = ea.id
+                 WHERE ea.user_id = ?`;
+        params = [user.id];
+      }
+
+      const result = await c.env.DB.prepare(query).bind(...params).first<{ count: number }>();
+      return c.json({ count: result?.count || 0 });
+    }
 
     if (addressId) {
       // Verify ownership of the specific address

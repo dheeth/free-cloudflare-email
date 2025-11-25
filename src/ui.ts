@@ -950,6 +950,7 @@ function getDashboardPage() {
     <script>
         const API_BASE = '/api';
         const token = localStorage.getItem('token');
+        let autoRefreshInterval;
 
         if (!token) window.location.href = '/login';
 
@@ -987,12 +988,23 @@ function getDashboardPage() {
         }
 
         async function loadDashboard() {
+            // Start loading email count in parallel
+            loadEmails(true);
+            startAutoRefresh();
+
             try {
                 // Load Addresses
                 const res = await fetch(API_BASE + '/addresses', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+                
+                if (!res.ok) throw new Error('Failed to fetch addresses');
+                
                 const data = await res.json();
+                
+                if (!data.addresses) {
+                    throw new Error('Invalid response format');
+                }
                 
                 const list = document.getElementById('address-list');
                 const filter = document.getElementById('address-filter');
@@ -1060,15 +1072,13 @@ function getDashboardPage() {
                     filter.value = savedFilter;
                 }
 
-                loadEmails(true);
-                startAutoRefresh();
-
             } catch (e) {
                 console.error(e);
+                alert('Error loading dashboard: ' + e.message);
             }
         }
 
-        let autoRefreshInterval;
+        
         function startAutoRefresh() {
             if (autoRefreshInterval) clearInterval(autoRefreshInterval);
             autoRefreshInterval = setInterval(() => {
@@ -1095,7 +1105,11 @@ function getDashboardPage() {
             }
 
             let url = API_BASE + '/emails';
-            if (addressId) url += '?address_id=' + addressId;
+            const params = new URLSearchParams();
+            if (addressId) params.append('address_id', addressId);
+            if (countOnly) params.append('count_only', 'true');
+            
+            if (params.toString()) url += '?' + params.toString();
 
             try {
                 const res = await fetch(url, {
@@ -1104,14 +1118,14 @@ function getDashboardPage() {
                 const data = await res.json();
 
                 if (countOnly) {
-                    document.getElementById('email-count').textContent = data.emails.length;
+                    document.getElementById('email-count').textContent = data.count !== undefined ? data.count : (data.emails ? data.emails.length : 0);
                     return;
                 }
 
                 const list = document.getElementById('message-list');
                 list.innerHTML = '';
 
-                if (data.emails.length === 0) {
+                if (!data.emails || data.emails.length === 0) {
                     list.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-muted);">No emails found</div>';
                 } else {
                     data.emails.forEach(email => {
