@@ -980,13 +980,17 @@ function getDashboardPage() {
             
             document.getElementById('section-' + section).style.display = 'block';
             
-            if (section === 'emails') loadEmails();
+            if (section === 'emails') {
+                const saved = localStorage.getItem('selectedAddressId');
+                loadEmails(false, false, saved);
+            }
             if (section === 'send') loadSendOptions();
         }
 
         async function loadDashboard() {
             // Start loading email count in parallel
-            loadEmails(true);
+            const saved = localStorage.getItem('selectedAddressId');
+            loadEmails(true, false, saved);
             startAutoRefresh();
 
             try {
@@ -1067,10 +1071,6 @@ function getDashboardPage() {
                 const savedFilter = localStorage.getItem('selectedAddressId');
                 if (savedFilter && filter.querySelector(\`option[value="\${savedFilter}"]\`)) {
                     filter.value = savedFilter;
-                    // If we are on the emails tab, reload the list with the correct filter
-                    if (localStorage.getItem('currentSection') === 'emails') {
-                        loadEmails();
-                    }
                 }
 
             } catch (e) {
@@ -1079,7 +1079,6 @@ function getDashboardPage() {
             }
         }
 
-        
         function startAutoRefresh() {
             if (autoRefreshInterval) clearInterval(autoRefreshInterval);
             autoRefreshInterval = setInterval(() => {
@@ -1098,8 +1097,11 @@ function getDashboardPage() {
             loadEmails();
         }
 
-        async function loadEmails(countOnly = false, isAutoRefresh = false) {
-            const addressId = document.getElementById('address-filter').value;
+        async function loadEmails(countOnly = false, isAutoRefresh = false, overrideAddressId = null) {
+            let addressId = overrideAddressId;
+            if (addressId === null) {
+                addressId = document.getElementById('address-filter').value;
+            }
             const refreshBtn = document.getElementById('refresh-btn');
             
             if (!countOnly && refreshBtn && !isAutoRefresh) {
