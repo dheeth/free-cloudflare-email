@@ -810,7 +810,7 @@ function getDashboardPage() {
             </div>
 
             <!-- Dashboard Section -->
-            <div id="section-dashboard" class="fade-in">
+            <div id="section-dashboard" style="display: none;" class="fade-in">
                 <div class="card-grid">
                     <div class="glass stat-card">
                         <div class="stat-icon">
@@ -851,7 +851,7 @@ function getDashboardPage() {
             <div id="section-emails" style="display: none;" class="fade-in">
                 <div class="glass" style="padding: 2rem;">
                     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-                        <select id="address-filter" onchange="loadEmails()">
+                        <select id="address-filter" onchange="handleFilterChange()">
                             <option value="">All Addresses</option>
                         </select>
                         <button id="refresh-btn" onclick="loadEmails()" class="btn btn-secondary">
@@ -955,12 +955,9 @@ function getDashboardPage() {
         if (!token) window.location.href = '/login';
 
         // Initial Load
-        loadDashboard().then(() => {
-            const savedSection = localStorage.getItem('currentSection');
-            if (savedSection) {
-                showSection(savedSection);
-            }
-        });
+        const savedSection = localStorage.getItem('currentSection') || 'dashboard';
+        showSection(savedSection);
+        loadDashboard();
 
         function showSection(section) {
             localStorage.setItem('currentSection', section);
@@ -1070,6 +1067,10 @@ function getDashboardPage() {
                 const savedFilter = localStorage.getItem('selectedAddressId');
                 if (savedFilter && filter.querySelector(\`option[value="\${savedFilter}"]\`)) {
                     filter.value = savedFilter;
+                    // If we are on the emails tab, reload the list with the correct filter
+                    if (localStorage.getItem('currentSection') === 'emails') {
+                        loadEmails();
+                    }
                 }
 
             } catch (e) {
@@ -1091,13 +1092,15 @@ function getDashboardPage() {
             }, 10000);
         }
 
+        function handleFilterChange() {
+            const addressId = document.getElementById('address-filter').value;
+            localStorage.setItem('selectedAddressId', addressId);
+            loadEmails();
+        }
+
         async function loadEmails(countOnly = false, isAutoRefresh = false) {
             const addressId = document.getElementById('address-filter').value;
             const refreshBtn = document.getElementById('refresh-btn');
-            
-            if (!countOnly) {
-                localStorage.setItem('selectedAddressId', addressId);
-            }
             
             if (!countOnly && refreshBtn && !isAutoRefresh) {
                 refreshBtn.classList.add('rotating');
