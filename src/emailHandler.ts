@@ -32,7 +32,16 @@ export async function handleIncomingEmail(context: any): Promise<void> {
     const email = await parser.parse(rawBuffer);
 
     const toAddress = message.to.toLowerCase();
-    const fromAddress = message.from.toLowerCase();
+
+    // Use the parsed "From" header if available, as it's more user-friendly than the envelope sender
+    let fromAddress = message.from;
+    if (email.from) {
+      if (email.from.name) {
+        fromAddress = `${email.from.name} <${email.from.address}>`;
+      } else {
+        fromAddress = email.from.address;
+      }
+    }
 
     // Check if the email address exists in our system
     const addressRecord = await db

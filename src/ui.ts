@@ -1090,13 +1090,13 @@ function getDashboardPage() {
                         div.style.marginBottom = '0.5rem';
                         div.onclick = () => openEmail(email);
                         div.innerHTML = \`
-                            <div style="flex: 1;">
+                            <div style="flex: 1; min-width: 0;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                    <span style="font-weight: 600; color: var(--primary);">\${email.from_address}</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">\${new Date(email.received_at * 1000).toLocaleString()}</span>
+                                    <span style="font-weight: 600; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 0.5rem;">\${email.from_address}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">\${new Date(email.received_at * 1000).toLocaleString()}</span>
                                 </div>
-                                <div style="font-weight: 500; margin-bottom: 0.25rem;">\${email.subject || '(No Subject)'}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">To: \${email.to_address}</div>
+                                <div style="font-weight: 500; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">\${email.subject || '(No Subject)'}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">To: \${email.to_address}</div>
                                 <div style="font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;">
                                     Click to view details
                                 </div>
