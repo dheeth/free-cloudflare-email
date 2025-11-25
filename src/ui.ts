@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+﻿import { Context } from 'hono';
 
 export async function serveUI(c: Context) {
     const path = c.req.path;
@@ -1347,47 +1347,106 @@ function getDashboardPage() {
 
 // --- Admin Page ---
 
+
 function getAdminPage() {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
     ${getSharedHead('Admin - Webmail')}
     <style>
-        /* Reusing Dashboard Styles */
         .app-layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
-        .sidebar { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(20px); border-right: 1px solid var(--border); padding: 2rem; display: flex; flex-direction: column; }
-        .main-content { padding: 2rem; overflow-y: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .sidebar { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border-right: 1px solid var(--border); padding: 2rem; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; z-index: 50; }
+        .main-content { padding: 2rem; overflow-y: auto; width: 100%; max-width: 100vw; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        /* Navigation */
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--surface-light); color: white; }
+        .nav-item svg { width: 20px; height: 20px; }
+
+        /* Tables */
+        .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; }
         th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
-        th { color: var(--text-muted); font-weight: 600; font-size: 0.9rem; }
-        tr:hover { background: var(--surface-light); }
+        th { background: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* Forms */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .form-input { width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; color: white; font-family: inherit; }
+        .form-input:focus { outline: none; border-color: var(--primary); }
+
+        /* Badges & Buttons */
+        .badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
         
-        @media (max-width: 768px) {
+        .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.85rem; }
+        .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+        /* Mobile Elements */
+        .menu-btn { display: none; background: none; border: none; color: white; cursor: pointer; padding: 0.5rem; margin-left: -0.5rem; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(4px); }
+        .overlay.open { opacity: 1; pointer-events: auto; }
+
+        /* Sections */
+        .section { display: none; animation: fadeIn 0.3s ease; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 1024px) {
             .app-layout { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
+            .sidebar { position: fixed; left: -280px; top: 0; bottom: 0; width: 280px; background: #0f172a; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-right: 1px solid var(--border); }
+            .sidebar.open { transform: translateX(280px); }
+            .menu-btn { display: block; }
             .main-content { padding: 1.5rem; }
-            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            
-            /* Responsive Table */
-            .table-container { overflow-x: auto; }
-            table { min-width: 600px; }
         }
     </style>
 </head>
 <body>
+    <div class="overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <div class="app-layout">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div style="font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 3rem; display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 32px; height: 32px; background: var(--secondary); border-radius: 8px;"></div>
-                Admin
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="shield_grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#ec4899" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 2L3 7V12C3 17.52 6.84 22.74 12 24C17.16 22.74 21 17.52 21 12V7L12 2Z" fill="url(#shield_grad)"/>
+                    <path d="M17 10H7C6.45 10 6 10.45 6 11V15C6 15.55 6.45 16 7 16H17C17.55 16 18 15.55 18 15V11C18 10.45 17.55 10 17 10Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M7 11L12 14L17 11" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Admin Panel
             </div>
             
             <nav style="margin-bottom: auto;">
-                 <a class="nav-item active" style="background: var(--surface-light); color: white;">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                 <a class="nav-item active" onclick="switchSection('overview')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     Overview
+                </a>
+                <a class="nav-item" onclick="switchSection('users')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    Users
+                </a>
+                <a class="nav-item" onclick="switchSection('emails')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    Emails
+                </a>
+                <a class="nav-item" onclick="switchSection('permissions')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Permissions
+                </a>
+                <a class="nav-item" onclick="switchSection('settings')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Settings
                 </a>
             </nav>
 
@@ -1396,60 +1455,126 @@ function getAdminPage() {
                 Logout
             </button>
         </aside>
-        
-        <!-- Mobile Navigation -->
-        <nav class="mobile-nav">
-            <a class="mobile-nav-item active">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Overview
-            </a>
-            <a class="mobile-nav-item" onclick="logout()">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                Logout
-            </a>
-        </nav>
 
         <main class="main-content">
             <div class="header">
-                <h2>System Overview</h2>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="menu-btn" onclick="toggleSidebar()">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h2 id="page-title">System Overview</h2>
+                </div>
                 <div class="badge badge-active" style="font-size: 0.9rem;">Admin Mode</div>
             </div>
 
-            <div class="glass" style="padding: 2rem; margin-bottom: 2rem;">
-                <h3>Statistics</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
-                        <div id="total-users" style="font-size: 2rem; font-weight: 700; color: var(--primary);">0</div>
-                        <div style="color: var(--text-muted);">Total Users</div>
-                    </div>
-                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
-                        <div id="total-addresses" style="font-size: 2rem; font-weight: 700; color: var(--secondary);">0</div>
-                        <div style="color: var(--text-muted);">Active Addresses</div>
-                    </div>
-                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
-                        <div id="total-emails" style="font-size: 2rem; font-weight: 700; color: var(--success);">0</div>
-                        <div style="color: var(--text-muted);">Processed Emails</div>
+            <!-- Overview Section -->
+            <div id="overview" class="section active">
+                <div class="glass" style="padding: 2rem; margin-bottom: 2rem;">
+                    <h3>Statistics</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                            <div id="total-users" style="font-size: 2rem; font-weight: 700; color: var(--primary);">0</div>
+                            <div style="color: var(--text-muted);">Total Users</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                            <div id="total-addresses" style="font-size: 2rem; font-weight: 700; color: var(--secondary);">0</div>
+                            <div style="color: var(--text-muted);">Active Addresses</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                            <div id="total-emails" style="font-size: 2rem; font-weight: 700; color: var(--success);">0</div>
+                            <div style="color: var(--text-muted);">Processed Emails</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                            <div id="pending-permissions" style="font-size: 2rem; font-weight: 700; color: #fbbf24;">0</div>
+                            <div style="color: var(--text-muted);">Pending Requests</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="glass" style="padding: 2rem;">
-                <h3>Recent Users</h3>
-                <div class="table-container">
-                    <table id="users-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Created At</th>
-                                <th>Role</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+            <!-- Users Section -->
+            <div id="users" class="section">
+                <div class="glass" style="padding: 2rem;">
+                    <h3>Manage Users</h3>
+                    <div class="table-container" style="margin-top: 1.5rem;">
+                        <table id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Status</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <!-- Emails Section -->
+            <div id="emails" class="section">
+                <div class="glass" style="padding: 2rem;">
+                    <h3>Recent Emails</h3>
+                    <div class="table-container" style="margin-top: 1.5rem;">
+                        <table id="emails-table">
+                            <thead>
+                                <tr>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Subject</th>
+                                    <th>Received</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permissions Section -->
+            <div id="permissions" class="section">
+                <div class="glass" style="padding: 2rem;">
+                    <h3>Pending Permissions</h3>
+                    <div class="table-container" style="margin-top: 1.5rem;">
+                        <table id="permissions-table">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Address</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settings" class="section">
+                <div class="glass" style="padding: 2rem; max-width: 600px;">
+                    <h3>System Settings</h3>
+                    <div style="margin-top: 2rem;">
+                        <div class="form-group">
+                            <label class="form-label">Email Retention (Days)</label>
+                            <div style="display: flex; gap: 1rem;">
+                                <input type="number" id="setting-ttl" class="form-input" placeholder="30">
+                                <button onclick="saveTTL()" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">System Domain</label>
+                            <div style="display: flex; gap: 1rem;">
+                                <input type="text" id="setting-domain" class="form-input" placeholder="example.com">
+                                <button onclick="saveDomain()" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -1458,30 +1583,201 @@ function getAdminPage() {
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/login';
 
-        loadAdminData();
+        // Initial Load
+        loadStats();
+        
+        // Navigation Logic
+        function switchSection(sectionId) {
+            // Update UI
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active'); // Note: this relies on the click event
+            
+            document.getElementById('page-title').textContent = sectionId.charAt(0).toUpperCase() + sectionId.slice(1);
+            
+            // Close mobile menu
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebar-overlay').classList.remove('open');
 
-        async function loadAdminData() {
+            // Load Data
+            if (sectionId === 'users') loadUsers();
+            if (sectionId === 'emails') loadEmails();
+            if (sectionId === 'permissions') loadPermissions();
+            if (sectionId === 'settings') loadSettings();
+            if (sectionId === 'overview') loadStats();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+
+        // Data Loading Functions
+        async function loadStats() {
             try {
                 const res = await fetch(API_BASE + '/admin/stats', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
-                
-                if (!res.ok) {
-                    if (res.status === 403) alert('Access Denied');
+                if (!res.ok) return;
+                const data = await res.json();
+                document.getElementById('total-users').textContent = data.users;
+                document.getElementById('total-addresses').textContent = data.addresses;
+                document.getElementById('total-emails').textContent = data.emails;
+                document.getElementById('pending-permissions').textContent = data.pending_permissions;
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(API_BASE + '/admin/users', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.querySelector('#users-table tbody');
+                tbody.innerHTML = data.users.map(u => \`
+                    <tr>
+                        <td><span style="font-family: monospace; color: var(--text-muted);">\${u.id.substring(0,8)}...</span></td>
+                        <td>
+                            \${u.is_banned 
+                                ? '<span class="badge badge-danger">Banned</span>' 
+                                : '<span class="badge badge-success">Active</span>'}
+                            \${u.is_admin ? '<span class="badge badge-warning" style="margin-left: 0.5rem">Admin</span>' : ''}
+                        </td>
+                        <td>\${new Date(u.created_at).toLocaleDateString()}</td>
+                        <td>
+                            \${!u.is_admin ? \`
+                                \${u.is_banned 
+                                    ? \`<button onclick="unbanUser('\${u.id}')" class="btn btn-sm btn-primary">Unban</button>\`
+                                    : \`<button onclick="banUser('\${u.id}')" class="btn btn-sm btn-danger">Ban</button>\`
+                                }
+                            \` : ''}
+                        </td>
+                    </tr>
+                \`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadEmails() {
+            try {
+                const res = await fetch(API_BASE + '/admin/emails?limit=50', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.querySelector('#emails-table tbody');
+                tbody.innerHTML = data.emails.map(e => \`
+                    <tr>
+                        <td>\${escapeHtml(e.from_address)}</td>
+                        <td>\${escapeHtml(e.to_address)}</td>
+                        <td>\${escapeHtml(e.subject || '(No Subject)')}</td>
+                        <td style="color: var(--text-muted); font-size: 0.9rem;">\${new Date(e.received_at).toLocaleString()}</td>
+                    </tr>
+                \`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadPermissions() {
+            try {
+                const res = await fetch(API_BASE + '/admin/permissions/pending', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.querySelector('#permissions-table tbody');
+                if (data.permissions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No pending requests</td></tr>';
                     return;
                 }
+                tbody.innerHTML = data.permissions.map(p => \`
+                    <tr>
+                        <td><span style="font-family: monospace;">\${p.user_id.substring(0,8)}...</span></td>
+                        <td>\${escapeHtml(p.address)}</td>
+                        <td>\${new Date(p.requested_at).toLocaleDateString()}</td>
+                        <td style="display: flex; gap: 0.5rem;">
+                            <button onclick="approvePermission('\${p.id}')" class="btn btn-sm btn-primary">Approve</button>
+                            <button onclick="rejectPermission('\${p.id}')" class="btn btn-sm btn-danger">Reject</button>
+                        </td>
+                    </tr>
+                \`).join('');
+            } catch (e) { console.error(e); }
+        }
 
-                const data = await res.json();
+        async function loadSettings() {
+            try {
+                const [ttlRes, domainRes] = await Promise.all([
+                    fetch(API_BASE + '/admin/settings/ttl', { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(API_BASE + '/admin/settings/domain', { headers: { 'Authorization': 'Bearer ' + token } })
+                ]);
+                const ttlData = await ttlRes.json();
+                const domainData = await domainRes.json();
                 
-                document.getElementById('total-users').textContent = data.stats.total_users;
-                document.getElementById('total-addresses').textContent = data.stats.total_addresses;
-                document.getElementById('total-emails').textContent = data.stats.total_emails;
+                document.getElementById('setting-ttl').value = ttlData.ttl_days;
+                document.getElementById('setting-domain').value = domainData.domain;
+            } catch (e) { console.error(e); }
+        }
 
-                // Mocking user table population as the stats endpoint might not return list of users
-                // In a real scenario, you'd fetch /admin/users
-            } catch (e) {
-                console.error(e);
-            }
+        // Actions
+        async function banUser(id) {
+            if (!confirm('Are you sure you want to ban this user?')) return;
+            await fetch(API_BASE + '/admin/users/' + id + '/ban', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadUsers();
+        }
+
+        async function unbanUser(id) {
+            await fetch(API_BASE + '/admin/users/' + id + '/unban', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadUsers();
+        }
+
+        async function approvePermission(id) {
+            await fetch(API_BASE + '/admin/permissions/' + id + '/approve', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadPermissions();
+            loadStats(); // Update pending count
+        }
+
+        async function rejectPermission(id) {
+            if (!confirm('Reject this permission request?')) return;
+            await fetch(API_BASE + '/admin/permissions/' + id + '/reject', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadPermissions();
+            loadStats();
+        }
+
+        async function saveTTL() {
+            const val = document.getElementById('setting-ttl').value;
+            await fetch(API_BASE + '/admin/settings/ttl', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ ttl_days: val })
+            });
+            alert('Settings saved');
+        }
+
+        async function saveDomain() {
+            const val = document.getElementById('setting-domain').value;
+            await fetch(API_BASE + '/admin/settings/domain', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ domain: val })
+            });
+            alert('Settings saved');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function logout() {
